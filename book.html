@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book a Hall | Srithan Grand Palace Hall</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="brand">Srithan <span>Grand Palace Hall</span></div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="halls.html">Our Halls</a></li>
+    <li><a href="book.html" class="active">Book Now</a></li>
+    <li><a href="my-bookings.html">My Bookings</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<section>
+  <h2 class="sec-title">Book Your Event</h2>
+  <p class="sec-sub">Fill in the details below &mdash; we will confirm your slot</p>
+
+  <form id="bookForm" onsubmit="return submitBooking(event)">
+    <label>Full Name *</label>
+    <input type="text" id="name" required maxlength="100">
+
+    <label>Email *</label>
+    <input type="email" id="email" required maxlength="100">
+
+    <label>Phone *</label>
+    <input type="tel" id="phone" required maxlength="15">
+
+    <label>Address</label>
+    <textarea id="address" rows="2" maxlength="255"></textarea>
+
+    <label>Select Hall *</label>
+    <select id="hall" required></select>
+
+    <label>Event Name *</label>
+    <input type="text" id="event" required maxlength="100" placeholder="e.g. Wedding Reception">
+
+    <label>Event Date *</label>
+    <input type="date" id="date" required>
+
+    <label>Start Time *</label>
+    <input type="time" id="start" required>
+
+    <label>End Time *</label>
+    <input type="time" id="end" required>
+
+    <div class="price" id="amt" style="margin-top:16px">Select a hall to see price</div>
+
+    <button class="btn" style="margin-top:20px;width:100%">Confirm Booking (Pay Advance)</button>
+  </form>
+  <div id="msg"></div>
+</section>
+
+<footer>&copy; 2026 Srithan Grand Palace Hall, Kurnool. All rights reserved.</footer>
+
+<script src="js/data.js"></script>
+<script>
+const db = loadDB();
+const params = new URLSearchParams(location.search);
+const hallSel = document.getElementById('hall');
+
+hallSel.innerHTML = '<option value="">-- Choose a hall --</option>' +
+  db.halls.map(h => `<option value="${h.hall_id}">${h.hall_name} (cap. ${h.capacity}) - ${fmt(h.price)}/day</option>`).join('');
+
+if(params.get('hall')) hallSel.value = params.get('hall');
+if(params.get('date')) document.getElementById('date').value = params.get('date');
+document.getElementById('date').min = today();
+
+function hallPrice(){ const h = db.halls.find(x => x.hall_id == hallSel.value); return h ? h.price : 0; }
+function showAmt(){ document.getElementById('amt').textContent = hallPrice() ? 'Total: ' + fmt(hallPrice()) : 'Select a hall to see price'; }
+hallSel.onchange = showAmt; showAmt();
+
+function submitBooking(e){
+  e.preventDefault();
+  const msg = document.getElementById('msg');
+  const hall_id = +hallSel.value;
+  const date = document.getElementById('date').value;
+  const start = document.getElementById('start').value;
+  const end = document.getElementById('end').value;
+  if(!hall_id){ msg.className = 'msg err'; msg.textContent = 'Please select a hall.'; return false; }
+  if(end <= start){ msg.className = 'msg err'; msg.textContent = 'End time must be after start time.'; return false; }
+  if(isBooked(db, hall_id, date, start, end)){
+    msg.className = 'msg err';
+    msg.textContent = 'Sorry, this hall is already booked for that date & time. Please pick another slot.';
+    return false;
+  }
+  // customer record
+  let cust = db.customers.find(c => c.email === document.getElementById('email').value.trim());
+  if(!cust){
+    cust = { customer_id: db.nextCustomer++, name: name.value.trim(), email: email.value.trim(),
+             phone: phone.value.trim(), address: document.getElementById('address').value.trim() };
+    db.customers.push(cust);
+  }
+  const bid = db.nextBooking++;
+  const amount = hallPrice();
+  db.bookings.push({ booking_id: bid, customer_id: cust.customer_id, hall_id,
+    event_name: document.getElementById('event').value.trim(), event_date: date,
+    start_time: start, end_time: end, total_amount: amount, status: 'Pending' });
+  db.payments.push({ payment_id: db.nextPayment++, booking_id: bid, amount: Math.round(amount * 0.25),
+    payment_date: today(), payment_status: 'Paid' });   // 25% advance
+  saveDB(db);
+
+  msg.className = 'msg ok';
+  msg.innerHTML = `Booking request submitted! Booking ID: <strong>#${bid}</strong><br>
+    Advance paid (25%): <strong>${fmt(Math.round(amount * 0.25))}</strong>.
+    Status: <strong>Pending</strong> admin confirmation.<br>
+    <a href="my-bookings.html">View My Bookings &amp; Payment Details</a>`;
+  document.getElementById('bookForm').reset(); showAmt();
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  return false;
+}
+</script>
+</body></html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Our Halls | Srithan Grand Palace Hall</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="brand">Srithan <span>Grand Palace Hall</span></div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="halls.html" class="active">Our Halls</a></li>
+    <li><a href="book.html">Book Now</a></li>
+    <li><a href="my-bookings.html">My Bookings</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<section>
+  <h2 class="sec-title">Our Halls</h2>
+  <p class="sec-sub">Check capacity, facilities and live availability</p>
+
+  <div style="max-width:900px;margin:0 auto 30px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <input type="date" id="chkDate" style="width:auto">
+    <button class="btn" style="padding:11px 28px" onclick="render()">Check Availability</button>
+  </div>
+
+  <div class="grid" id="hallList"></div>
+</section>
+
+<footer>&copy; 2026 Srithan Grand Palace Hall, Kurnool. All rights reserved.</footer>
+
+<script src="js/data.js"></script>
+<script>
+const db = loadDB();
+const params = new URLSearchParams(location.search);
+
+function render(){
+  const date = document.getElementById('chkDate').value;
+  document.getElementById('hallList').innerHTML = db.halls.map(h => {
+    let status = h.status;
+    if(date && status === 'Available' && isBooked(db, h.hall_id, date, '00:00', '23:59'))
+      status = 'Fully Booked';
+    const badge = status === 'Available'
+      ? '<span class="badge" style="background:#d7eddb;color:#1e6b2e">Available</span>'
+      : '<span class="badge">' + status + '</span>';
+    return `
+    <div class="card">
+      ${badge}
+      <img src="${h.image}" alt="${h.hall_name}">
+      <div class="body">
+        <h3>${h.hall_name}</h3>
+        <p>${h.location} &middot; Capacity: ${h.capacity} guests</p>
+        <div>${h.facilities.split(',').map(f => '<span class="chip">' + f.trim() + '</span>').join('')}</div>
+        <div class="price">${fmt(h.price)} <small>/ day</small></div>
+        <a class="btn" style="margin-top:14px;padding:10px 26px" href="book.html?hall=${h.hall_id}${date ? '&date=' + date : ''}">Book This Hall</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+if(params.get('date')) document.getElementById('chkDate').value = params.get('date');
+render();
+</script>
+</body></html>

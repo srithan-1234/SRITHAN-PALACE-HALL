@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Bookings | Srithan Grand Palace Hall</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="brand">Srithan <span>Grand Palace Hall</span></div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="halls.html">Our Halls</a></li>
+    <li><a href="book.html">Book Now</a></li>
+    <li><a href="my-bookings.html" class="active">My Bookings</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<section>
+  <h2 class="sec-title">My Bookings &amp; Payments</h2>
+  <p class="sec-sub">Enter your email to view your bookings and payment details</p>
+
+  <form id="lookup" onsubmit="return showBookings(event)" style="max-width:460px">
+    <label>Email Address</label>
+    <input type="email" id="q" required>
+    <button class="btn" style="margin-top:18px;width:100%">View My Bookings</button>
+  </form>
+
+  <div id="result" style="margin-top:36px;overflow-x:auto"></div>
+</section>
+
+<footer>&copy; 2026 Srithan Grand Palace Hall, Kurnool. All rights reserved.</footer>
+
+<script src="js/data.js"></script>
+<script>
+const db = loadDB();
+
+function showBookings(e){
+  e.preventDefault();
+  const email = document.getElementById('q').value.trim().toLowerCase();
+  const cust = db.customers.find(c => c.email.toLowerCase() === email);
+  const out = document.getElementById('result');
+  if(!cust){ out.innerHTML = '<div class="msg err">No bookings found for this email.</div>'; return false; }
+
+  const rows = db.bookings.filter(b => b.customer_id === cust.customer_id);
+  if(!rows.length){ out.innerHTML = '<div class="msg err">No bookings found for this email.</div>'; return false; }
+
+  out.innerHTML = `<table><tr>
+    <th>Booking ID</th><th>Hall</th><th>Event</th><th>Date</th><th>Time</th>
+    <th>Total</th><th>Advance Paid</th><th>Balance</th><th>Payment Date</th><th>Payment Status</th><th>Booking Status</th>
+  </tr>` + rows.map(b => {
+    const h = db.halls.find(x => x.hall_id === b.hall_id);
+    const p = db.payments.filter(x => x.booking_id === b.booking_id && x.payment_status === 'Paid');
+    const paid = p.reduce((s,x) => s + x.amount, 0);
+    const pdate = p.length ? p[0].payment_date : '-';
+    const pstat = b.status === 'Cancelled' ? 'Refunded' : (paid >= b.total_amount ? 'Paid' : 'Partial');
+    return `<tr>
+      <td>#${b.booking_id}</td><td>${h ? h.hall_name : b.hall_id}</td><td>${b.event_name}</td>
+      <td>${b.event_date}</td><td>${b.start_time} - ${b.end_time}</td>
+      <td>${fmt(b.total_amount)}</td><td>${fmt(paid)}</td><td>${fmt(b.total_amount - paid)}</td>
+      <td>${pdate}</td>
+      <td><span class="status ${pstat === 'Refunded' ? 'Cancelled' : (pstat === 'Paid' ? 'Confirmed' : 'Pending')}">${pstat}</span></td>
+      <td><span class="status ${b.status}">${b.status}</span></td>
+    </tr>`;
+  }).join('') + '</table>';
+  return false;
+}
+</script>
+</body></html>

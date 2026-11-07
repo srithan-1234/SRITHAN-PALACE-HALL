@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel | Srithan Grand Palace Hall</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="brand">Srithan <span>Grand Palace Hall</span></div>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="halls.html">Our Halls</a></li>
+    <li><a href="book.html">Book Now</a></li>
+    <li><a href="my-bookings.html">My Bookings</a></li>
+    <li><a href="admin.html" class="active">Admin</a></li>
+  </ul>
+</nav>
+
+<section>
+  <form id="login" class="login-box" onsubmit="return doLogin(event)">
+    <h2 class="sec-title">Admin Login</h2>
+    <p class="sec-sub" style="margin-bottom:20px">Default password: <code>admin123</code></p>
+    <label>Username</label><input id="u" required value="admin">
+    <label>Password</label><input id="p" type="password" required>
+    <button class="btn" style="margin-top:18px;width:100%">Login</button>
+    <div id="lmsg"></div>
+  </form>
+
+  <div id="panel" style="display:none">
+    <h2 class="sec-title">Admin Panel</h2>
+    <p class="sec-sub">Manage hall details and reservations</p>
+    <div class="admin-bar">
+      <button class="on" onclick="tab('res',this)">Reservations</button>
+      <button onclick="tab('halls',this)">Manage Halls</button>
+      <button onclick="tab('rev',this)">Revenue Report</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+    <div id="t-res" style="overflow-x:auto"></div>
+    <div id="t-halls" style="display:none"></div>
+    <div id="t-rev" style="display:none"></div>
+  </div>
+</section>
+
+<footer>&copy; 2026 Srithan Grand Palace Hall, Kurnool. All rights reserved.</footer>
+
+<script src="js/data.js"></script>
+<script>
+const db = loadDB();
+
+function doLogin(e){
+  e.preventDefault();
+  if(document.getElementById('u').value === 'admin' && document.getElementById('p').value === 'admin123'){
+    sessionStorage.setItem('srithan_admin','1');
+    showPanel();
+  } else {
+    document.getElementById('lmsg').innerHTML = '<div class="msg err">Invalid credentials.</div>';
+  }
+  return false;
+}
+function logout(){ sessionStorage.removeItem('srithan_admin'); location.reload(); }
+
+function tab(id, btn){
+  ['res','halls','rev'].forEach(t => document.getElementById('t-'+t).style.display = 'none');
+  document.getElementById('t-'+id).style.display = 'block';
+  document.querySelectorAll('.admin-bar button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function setStatus(id, st){
+  const b = db.bookings.find(x => x.booking_id === id);
+  if(!b) return;
+  if(st === 'Cancelled'){
+    db.payments.filter(p => p.booking_id === id).forEach(p => p.payment_status = 'Refunded');
+  }
+  if(st === 'Confirmed'){
+    const paid = db.payments.filter(p => p.booking_id === id && p.payment_status === 'Paid')
+                           .reduce((s,p) => s + p.amount, 0);
+    if(paid < b.total_amount)
+      db.payments.push({ payment_id: db.nextPayment++, booking_id: id,
+        amount: b.total_amount - paid, payment_date: today(), payment_status: 'Paid' });
+  }
+  b.status = st; saveDB(db); renderRes();
+}
+
+function toggleHall(id){
+  const h = db.halls.find(x => x.hall_id === id);
+  h.status = h.status === 'Maintenance' ? 'Available' : 'Maintenance';
+  saveDB(db); renderHalls();
+}
+
+function renderRes(){
+  const el = document.getElementById('t-res');
+  if(!db.bookings.length){ el.innerHTML = '<div class="msg err">No reservations yet.</div>'; return; }
+  el.innerHTML = `<table><tr>
+    <th>ID</th><th>Customer</th><th>Phone</th><th>Hall</th><th>Event</th><th>Date</th>
+    <th>Time</th><th>Total</th><th>Advance</th><th>Status</th><th>Actions</th></tr>` +
+  db.bookings.map(b => {
+    const c = db.customers.find(x => x.customer_id === b.customer_id) || {};
+    const h = db.halls.find(x => x.hall_id === b.hall_id) || {};
+    const paid = db.payments.filter(p => p.booking_id === b.booking_id && p.payment_status === 'Paid')
+                            .reduce((s,p) => s + p.amount, 0);
+    return `<tr>
+      <td>#${b.booking_id}</td><td>${c.name || '-'}</td><td>${c.phone || '-'}</td>
+      <td>${h.hall_name || b.hall_id}</td><td>${b.event_name}</td><td>${b.event_date}</td>
+      <td>${b.start_time}-${b.end_time}</td><td>${fmt(b.total_amount)}</td><td>${fmt(paid)}</td>
+      <td><span class="status ${b.status}">${b.status}</span></td>
+      <td>
+        ${b.status === 'Pending' ? `<button class="btn" style="padding:6px 14px;font-size:.8rem" onclick="setStatus(${b.booking_id},'Confirmed')">Confirm</button>` : ''}
+        ${['Pending','Confirmed'].includes(b.status) ? ` <button class="btn outline" style="padding:6px 14px;font-size:.8rem" onclick="setStatus(${b.booking_id},'Cancelled')">Cancel</button>` : ''}
+      </td></tr>`;
+  }).join('') + '</table>';
+}
+
+function renderHalls(){
+  document.getElementById('t-halls').innerHTML = `<table><tr>
+    <th>ID</th><th>Hall</th><th>Location</th><th>Capacity</th><th>Price/Day</th><th>Status</th><th>Action</th></tr>` +
+  db.halls.map(h => `<tr>
+    <td>${h.hall_id}</td><td>${h.hall_name}</td><td>${h.location}</td>
+    <td>${h.capacity}</td><td>${fmt(h.price)}</td>
+    <td><span class="status ${h.status === 'Available' ? 'Confirmed' : 'Maintenance'}">${h.status}</span></td>
+    <td><button class="btn outline" style="padding:6px 14px;font-size:.8rem" onclick="toggleHall(${h.hall_id})">
+      ${h.status === 'Maintenance' ? 'Mark Available' : 'Set Maintenance'}</button></td></tr>`).join('') +
+  '</table><p class="sec-sub" style="margin-top:14px">Prices &amp; facilities are edited in js/data.js for this demo.</p>';
+}
+
+function renderRev(){
+  let total = 0;
+  const rows = db.halls.map(h => {
+    const bs = db.bookings.filter(b => b.hall_id === h.hall_id && b.status !== 'Cancelled');
+    const rev = bs.reduce((s,b) => s + b.total_amount, 0); total += rev;
+    return `<tr><td>${h.hall_name}</td><td>${bs.length}</td><td>${fmt(rev)}</td></tr>`;
+  }).join('');
+  document.getElementById('t-rev').innerHTML = `<table><tr>
+    <th>Hall</th><th>Bookings</th><th>Expected Revenue</th></tr>${rows}
+    <tr style="font-weight:700;background:#f4e8d3"><td>Total</td><td>${db.bookings.filter(b=>b.status!=='Cancelled').length}</td><td>${fmt(total)}</td></tr></table>`;
+}
+
+function showPanel(){
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('panel').style.display = 'block';
+  renderRes(); renderHalls(); renderRev();
+}
+if(sessionStorage.getItem('srithan_admin')) showPanel();
+</script>
+</body></html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Srithan Grand Palace Hall | Kurnool</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="brand">Srithan <span>Grand Palace Hall</span></div>
+  <ul>
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="halls.html">Our Halls</a></li>
+    <li><a href="book.html">Book Now</a></li>
+    <li><a href="my-bookings.html">My Bookings</a></li>
+    <li><a href="admin.html">Admin</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <img class="bg" src="images/hero.jpg" alt="Royal wedding stage at Srithan Grand Palace Hall">
+  <div class="inner">
+    <h1>Celebrate Your Dream Wedding at Srithan Grand Palace Hall</h1>
+    <p>Kurnool's most trusted venue for weddings, receptions & grand celebrations</p>
+    <a class="btn" href="book.html">Book Your Date</a>
+    <a class="btn outline" href="halls.html" style="margin-left:12px">View Halls</a>
+  </div>
+</header>
+
+<section>
+  <h2 class="sec-title">Our Halls</h2>
+  <p class="sec-sub">From intimate gatherings to grand royal weddings</p>
+  <div class="grid" id="featured"></div>
+</section>
+
+<div class="stats">
+  <div><strong>15+</strong>Years of Service</div>
+  <div><strong>1,350</strong>Guest Capacity</div>
+  <div><strong>800+</strong>Events Hosted</div>
+  <div><strong>3</strong>Halls to Choose</div>
+</div>
+
+<section>
+  <div class="about">
+    <img src="images/dining.jpg" alt="Dining setup">
+    <div>
+      <h2 class="sec-title" style="text-align:left">About Srithan Grand Palace Hall</h2>
+      <p>Located in the heart of Kurnool, Srithan Grand Palace Hall has been the venue of choice
+      for weddings, receptions, engagements and corporate events for over 15 years.</p>
+      <p style="margin-top:12px">Our venues feature air-conditioned halls, royal stage decorations,
+      in-house catering with veg &amp; non-veg menus, ample car parking, guest rooms and full power backup.</p>
+      <p style="margin-top:12px"><strong>Contact:</strong> +91 98765 43210 &nbsp;|&nbsp;
+      <strong>Email:</strong> bookings@srithanhall.in</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 class="sec-title">Gallery</h2>
+  <p class="sec-sub">A glimpse of our celebrations</p>
+  <div class="gallery">
+    <img src="images/stage1.jpg" alt="Reception stage">
+    <img src="images/stage2.jpg" alt="Floral stage">
+    <img src="images/gallery1.jpg" alt="Pastel theme decor">
+    <img src="images/dining.jpg" alt="Dining hall">
+  </div>
+</section>
+
+<footer>&copy; 2026 Srithan Grand Palace Hall, Kurnool. All rights reserved.</footer>
+
+<script src="js/data.js"></script>
+<script>
+const db = loadDB();
+document.getElementById('featured').innerHTML = db.halls.map(h => `
+  <div class="card">
+    <img src="${h.image}" alt="${h.hall_name}">
+    <div class="body">
+      <h3>${h.hall_name}</h3>
+      <p>${h.location} &middot; Capacity: ${h.capacity} guests</p>
+      <div class="price">${fmt(h.price)} <small>/ day</small></div>
+      <a class="btn" style="margin-top:14px;padding:10px 26px" href="book.html?hall=${h.hall_id}">Check Availability</a>
+    </div>
+  </div>`).join('');
+</script>
+</body></html>
